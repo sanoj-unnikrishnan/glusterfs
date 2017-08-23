@@ -2217,7 +2217,59 @@ out:
        return 0;
 }
 
+int32_t
+client_namelink (call_frame_t *frame, xlator_t *this, loc_t *loc, dict_t *xdata)
+{
+        int32_t               ret  = -1;
+        clnt_conf_t          *conf = NULL;
+        clnt_args_t           args = {0,};
+        rpc_clnt_procedure_t *proc = NULL;
 
+        conf = this->private;
+        if (!conf || !conf->fops || !conf->handshake)
+                goto out;
+
+        args.loc = loc;
+        args.xdata = xdata;
+
+        proc = &conf->fops->proctable[GF_FOP_NAMELINK];
+        if (proc->fn)
+                ret = proc->fn (frame, this, &args);
+
+ out:
+        if (ret)
+                STACK_UNWIND_STRICT (namelink, frame,
+                                     -1, EINVAL, NULL, NULL, NULL);
+        return 0;
+}
+
+int32_t
+client_icreate (call_frame_t *frame,
+                xlator_t *this, loc_t *loc, mode_t mode, dict_t *xdata)
+{
+        int32_t               ret  = -1;
+        clnt_conf_t          *conf = NULL;
+        clnt_args_t           args = {0,};
+        rpc_clnt_procedure_t *proc = NULL;
+
+        conf = this->private;
+        if (!conf || !conf->fops || !conf->handshake)
+                goto out;
+
+        args.loc   = loc;
+        args.mode  = mode;
+        args.xdata = xdata;
+
+        proc = &conf->fops->proctable[GF_FOP_ICREATE];
+        if (proc->fn)
+                ret = proc->fn (frame, this, &args);
+
+ out:
+        if (ret)
+                STACK_UNWIND_STRICT (icreate, frame,
+                                     -1, EINVAL, NULL, NULL, NULL);
+        return 0;
+}
 
 int
 client_mark_fd_bad (xlator_t *this)
@@ -2999,6 +3051,8 @@ struct xlator_fops fops = {
         .getactivelk = client_getactivelk,
         .setactivelk = client_setactivelk,
         .discover    = client_discover,
+        .icreate      = client_icreate,
+        .namelink     = client_namelink,
 };
 
 

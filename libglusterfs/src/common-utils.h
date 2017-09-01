@@ -937,4 +937,7 @@ int
 glusterfs_compute_sha256 (const unsigned char *content, size_t size,
                           char *sha256_hash);
 
+int
+__is_auxilary_gfid (uuid_t);
+
 #endif /* _COMMON_UTILS_H */

@@ -18,6 +18,90 @@
 #include "syncop.h"
 #include "quota-common-utils.h"
 
+static marker_prj_t*
+__prj_ref(marker_prj_t *prj)
+{
+	if (!prj)
+		return NULL;
+	prj->refcount++;
+	return prj;
+}
+
+static marker_prj_t*
+prj_ref(marker_prj_t *prj)
+{	
+	if (!prj)
+		return NULL;
+	LOCK(&marker_projects->lock);
+	__prj_ref(prj);
+	UNLOCK(&marker_projects->lock);
+	return prj;
+}
+
+static marker_prj_t*
+__prj_unref(marker_prj_t *prj)
+{
+	if (!prj)
+		return NULL;
+	prj->refcount--;
+	/* if ref count is 0 remove from projects list*/
+	if (prj->refcount == 0) {
+		list_del_init(&prj->next_prj);
+		GF_FREE(prj);
+	}
+	return prj;
+}
+
+static marker_prj_t*
+prj_unref(marker_prj_t *prj)
+{	
+	if (!prj)
+		return NULL;
+	LOCK(&marker_projects->lock);
+	__prj_unref(prj);
+	UNLOCK(&marker_projects->lock);
+	return prj;
+}
+
+static marker_prj_t*
+prj_ref_get(uint16_t prj_id)
+{
+	marker_prj_t *tmp_prj = NULL;
+	LOCK(&marker_projects->lock);
+	list_for_each_entry(tmp_prj, &marker_projects->prj_list, next_prj)
+	{
+		if (tmp_prj->prj_id == prj_id) {
+			__prj_ref(tmp_prj);
+			break;
+		}
+	}
+	UNLOCK(&marker_projects->lock);
+	if (tmp_prj->prj_id == prj_id)
+		return tmp_prj;
+	else 
+		return NULL;
+		
+}
+
+static marker_prj_t*
+prj_init(uint16_t prj_id)
+{
+	marker_prj_t *prj;
+	prj = GF_CALLOC(1, sizeof(marker_prj_t), gf_common_mt_prj_t);
+	prj->prj_id = prj_id;
+	prj->prj_curr_usage = 0;
+	prj->prj_last_flushed_usage = 0;
+	prj->flags = 0;
+	LOCK_INIT(&prj->lock);
+	prj->refcount = 1;
+	
+	LOCK(&marker_projects->lock);
+	list_add_tail(&prj->next_prj, &marker_projects->prj_list);
+	UNLOCK(&marker_projects->lock);
+	return prj;
+}
+
+
 int
 mq_loc_copy (loc_t *dst, loc_t *src)
 {

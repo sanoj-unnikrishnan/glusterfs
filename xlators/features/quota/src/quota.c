@@ -18,6 +18,90 @@
 #include "events.h"
 
 struct volume_options options[];
+static quota_prj_t*
+__prj_ref(quota_prj_t *prj)
+{
+	if (!prj)
+		return NULL;
+	prj->refcount++;
+	return prj;
+}
+
+static quota_prj_t*
+prj_ref(quota_prj_t *prj)
+{	
+	if (!prj)
+		return NULL;
+	LOCK(&quota_projects->lock);
+	__prj_ref(prj);
+	UNLOCK(&quota_projects->lock);
+	return prj;
+}
+
+static quota_prj_t*
+__prj_unref(quota_prj_t *prj)
+{
+	if (!prj)
+		return NULL;
+	prj->refcount--;
+	/* if ref count is 0 remove from projects list*/
+	if (prj->refcount == 0) {
+		list_del_init(&prj->next_prj);
+		GF_FREE(prj);
+	}
+	return prj;
+}
+
+static quota_prj_t*
+prj_unref(quota_prj_t *prj)
+{	
+	if (!prj)
+		return NULL;
+	LOCK(&quota_projects->lock);
+	__prj_unref(prj);
+	UNLOCK(&quota_projects->lock);
+	return prj;
+}
+
+static quota_prj_t*
+prj_ref_get(uint16_t prj_id)
+{
+	quota_prj_t *tmp_prj = NULL;
+	LOCK(&quota_projects->lock);
+	list_for_each_entry(tmp_prj, &quota_projects->prj_list, next_prj)
+	{
+		if (tmp_prj->prj_id == prj_id) {
+			__prj_ref(tmp_prj);
+			break;
+		}
+	}
+	UNLOCK(&quota_projects->lock);
+	if (tmp_prj->prj_id == prj_id)
+		return tmp_prj;
+	else 
+		return NULL;
+}
+
+static quota_prj_t* 
+prj_init(uint16_t ext_prj_id, uint16_t prj_id)
+{
+	quota_prj_t *prj;
+	prj = GF_CALLOC(1, sizeof(quota_prj_t), gf_common_mt_prj_t);
+	prj->ext_prj_id = ext_prj_id; 
+	prj->prj_id = prj_id;
+	prj->prj_limit = 0;		
+	/* The limit should be initialised before setting enfoce,*/		
+	prj->prj_usage = 0;
+	prj->prj_flags = 0;
+	/* Timeval init prj_update_time*/
+	LOCK_INIT(&prj->lock);
+	prj->refcount = 1;
+	LOCK(&quota_projects->lock);
+	list_add_tail(&prj->next_prj, &quota_projects->prj_list);
+	UNLOCK(&quota_projects->lock);
+	return prj;
+}
+
 
 static int32_t
 __quota_init_inode_ctx (inode_t *inode, xlator_t *this,

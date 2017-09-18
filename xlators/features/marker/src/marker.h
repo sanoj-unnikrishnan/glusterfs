@@ -87,7 +87,7 @@ enum {
                         marker_local_unref (_local);            \
         } while (0)
 
-struct marker_local{
+struct marker_local {
         uint32_t        timebuf[2];
         pid_t           pid;
         loc_t           loc;
@@ -145,5 +145,6 @@ struct marker_conf{
         int32_t      version;
 };
 typedef struct marker_conf marker_conf_t;
+
 
 #endif

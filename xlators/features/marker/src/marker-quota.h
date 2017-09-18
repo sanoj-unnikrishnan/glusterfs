@@ -98,6 +98,31 @@
                 UNLOCK (lock);                  \
         } while (0)
 
+
+struct marker_prj {
+	uint16_t	prj_id;
+	uint64_t	prj_curr_usage;
+	uint64_t	prj_last_flushed_usage;
+	uint32_t	flags;
+        gf_lock_t       lock;
+	struct list_head next_prj;
+        int32_t		refcount;
+};
+typedef struct marker_prj marker_prj_t;
+
+struct marker_prj_list {
+        gf_lock_t		lock;
+	struct list_head	prj_list;
+};
+
+/*list of all projects*/
+struct marker_prj_list *marker_projects;
+
+/* Flags for marker_project */
+#define MARKER_NEEDS_REFRESH	0x00000001
+
+typedef struct marker_prj marker_prj_t;
+
 struct quota_inode_ctx {
         int64_t                size;
         int64_t                file_count;
@@ -108,6 +133,7 @@ struct quota_inode_ctx {
         gf_boolean_t           dirty_status;
         gf_lock_t              lock;
         struct list_head       contribution_head;
+	marker_prj_t	       *prj;
 };
 typedef struct quota_inode_ctx quota_inode_ctx_t;
 

@@ -1055,7 +1055,7 @@ cli_cmd_quota_parse (const char **words, int wordcount, dict_t **options)
                                       "remove", "list", "alert-time",
                                       "soft-timeout", "hard-timeout",
                                       "default-soft-limit", "limit-objects",
-                                      "list-objects", "remove-objects", NULL};
+                                      "list-objects", "remove-objects", "add-project","remove-project", NULL};
         char            *w       = NULL;
         uint32_t         time    = 0;
         double           percent = 0;
@@ -1065,6 +1065,7 @@ cli_cmd_quota_parse (const char **words, int wordcount, dict_t **options)
         GF_ASSERT (words);
         GF_ASSERT (options);
 
+        cli_err ("In cli_cmd_quota_parse");
         dict = dict_new ();
         if (!dict) {
                 gf_log ("cli", GF_LOG_ERROR, "dict_new failed");
@@ -1350,12 +1351,59 @@ cli_cmd_quota_parse (const char **words, int wordcount, dict_t **options)
                         goto out;
                 goto set_type;
         }
+
         if (strcmp (w, "default-soft-limit") == 0) {
                 if(wordcount != 5) {
                         ret = -1;
                         goto out;
                 }
                 type = GF_QUOTA_OPTION_TYPE_DEFAULT_SOFT_LIMIT;
+
+                ret = dict_set_str (dict, "value", (char *)words[4]);
+                if (ret < 0)
+                        goto out;
+                goto set_type;
+	}
+
+        if (strcmp (w, "add-project") == 0) {
+                if(wordcount < 6) {
+                        cli_err ("insufficient arguments");
+                        ret = -1;
+                        goto out;
+                }
+                if (words[5][0] != '/') {
+                        cli_err ("Please enter absolute path");
+                        ret = -1;
+                        goto out;
+                }
+                ret = dict_set_str (dict, "path", (char *) words[5]);
+                if (ret)
+                        goto out;
+
+                type = GF_QUOTA_OPTION_TYPE_ADD_PROJECT;
+                ret = dict_set_str (dict, "value", (char *)words[4]);
+                if (ret < 0)
+                        goto out;
+                goto set_type;
+        }
+
+        if (strcmp (w, "remove-project") == 0) {
+               if(wordcount < 6) {
+                        cli_err ("insufficient arguments");
+                        ret = -1;
+                        goto out;
+                }
+                if (words[5][0] != '/') {
+                        cli_err ("Please enter absolute path");
+                        ret = -1;
+                        goto out;
+                }
+                ret = dict_set_str (dict, "path", (char *) words[5]);
+                if (ret)
+                        goto out;
+
+
+                type = GF_QUOTA_OPTION_TYPE_REMOVE_PROJECT;
 
                 ret = dict_set_str (dict, "value", (char *)words[4]);
                 if (ret < 0)

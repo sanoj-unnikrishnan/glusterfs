@@ -4107,6 +4107,9 @@ quota_setxattr (call_frame_t *frame, xlator_t *this,
                                            op_errno, err);
                 GF_IF_INTERNAL_XATTR_GOTO ("trusted.pgfid*", dict, op_errno,
                                            err);
+		/* TODO: Prevent setting internal Project id. 
+ 		 *	 permitting it for now for testing purpose
+		 */
         }
 
         quota_get_limits (this, dict, &hard_lim, &soft_lim, &object_hard_limit,

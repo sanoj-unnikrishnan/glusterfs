@@ -1962,6 +1962,10 @@ out:
                         gf_event (EVENT_QUOTA_DEFAULT_SOFT_LIMIT, "volume=%s;"
                                   "default-soft-limit=%s", volname, words[4]);
                         break;
+                case GF_QUOTA_OPTION_TYPE_ADD_PROJECT:
+                case GF_QUOTA_OPTION_TYPE_REMOVE_PROJECT:
+			/*TODO */
+                        break;
                 }
         }
 
@@ -3274,6 +3278,8 @@ struct cli_cmd volume_cmds[] = {
           "list-objects [<path> ...] | remove <path>| remove-objects <path> | "
           "default-soft-limit <percent>} |\n"
           "volume quota <VOLNAME> {limit-usage <path> <size> [<percent>]} |\n"
+          "volume quota <VOLNAME> {add-project <project_id>} |\n"
+          "volume quota <VOLNAME> {remove-project <project_id>} |\n"
           "volume quota <VOLNAME> {limit-objects <path> <number> [<percent>]} |\n"
           "volume quota <VOLNAME> {alert-time|soft-timeout|hard-timeout} {<time>}",
           cli_cmd_quota_cbk,

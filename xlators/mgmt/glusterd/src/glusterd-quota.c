@@ -57,6 +57,8 @@ const char *gd_quota_op_list[GF_QUOTA_OPTION_TYPE_MAX + 1] = {
         [GF_QUOTA_OPTION_TYPE_REMOVE_OBJECTS]     = "remove-objects",
         [GF_QUOTA_OPTION_TYPE_ENABLE_OBJECTS]     = "enable-objects",
         [GF_QUOTA_OPTION_TYPE_UPGRADE]            = "upgrade",
+        [GF_QUOTA_OPTION_TYPE_ADD_PROJECT]        = "add-project",
+        [GF_QUOTA_OPTION_TYPE_REMOVE_PROJECT]     = "remove-project",
         [GF_QUOTA_OPTION_TYPE_MAX]                = NULL
 };
 
@@ -798,6 +800,78 @@ out:
 }
 
 static int
+glusterd_quota_set_project (char *volname, char *path, char *key,
+                            char *project_id, char **op_errstr)
+{
+        int               ret                = -1;
+        xlator_t         *this               = NULL;
+        char              abspath[PATH_MAX]  = {0,};
+        glusterd_conf_t  *priv               = NULL;
+
+        this = THIS;
+        GF_ASSERT (this);
+        priv = this->private;
+        GF_ASSERT (priv);
+
+        GLUSTERD_GET_QUOTA_LIMIT_MOUNT_PATH (abspath, volname, path);
+        ret = gf_lstat_dir (abspath, NULL);
+        if (ret) {
+                gf_asprintf (op_errstr, "Failed to find the directory %s. "
+                             "Reason : %s", abspath, strerror (errno));
+                goto out;
+        }
+
+        ret = sys_lsetxattr (abspath, key, project_id,
+                             sizeof (*project_id), 0);
+        if (ret == -1) {
+                gf_asprintf (op_errstr, "setxattr of %s failed on %s."
+                             " Reason : %s", key, abspath, strerror (errno));
+                goto out;
+        }
+        ret = 0;
+
+out:
+        return ret;
+}
+
+static int
+glusterd_quota_remove_project (char *volname, char *path, char *key,
+                            char *project_id, char **op_errstr)
+{
+        int               ret                = -1;
+        xlator_t         *this               = NULL;
+        char              abspath[PATH_MAX]  = {0,};
+        glusterd_conf_t  *priv               = NULL;
+
+        this = THIS;
+        GF_ASSERT (this);
+        priv = this->private;
+        GF_ASSERT (priv);
+
+        GLUSTERD_GET_QUOTA_LIMIT_MOUNT_PATH (abspath, volname, path);
+        ret = gf_lstat_dir (abspath, NULL);
+        if (ret) {
+                gf_asprintf (op_errstr, "Failed to find the directory %s. "
+                             "Reason : %s", abspath, strerror (errno));
+                goto out;
+        }
+
+        ret = sys_lremovexattr (abspath, QUOTA_PROJECT_KEY);
+        if (ret == -1) {
+                gf_asprintf (op_errstr, "remove xattr of %s failed on %s."
+                             " Reason : %s", key, abspath, strerror (errno));
+                goto out;
+        }
+
+        ret = 0;
+out:
+        return ret;
+}
+
+
+
+
+static int
 glusterd_update_quota_conf_version (glusterd_volinfo_t *volinfo)
 {
         volinfo->quota_conf_version++;
@@ -1353,7 +1427,45 @@ out:
                              "for volume %s", path, volinfo->volname);
         return ret;
 }
+static int
+glusterd_quota_project (char *volname, dict_t *dict,
+                             int type, char **op_errstr)
+{
+        char            *prj_id         = NULL;
+        char            *path           = NULL;
+        char            errmsg[1024];
+        int             ret             = 0;
+        xlator_t               *this         = THIS;
 
+        ret = dict_get_str (dict, "path", &path);
+        if (ret) {
+                gf_msg (this->name, GF_LOG_ERROR, 0,
+                        GD_MSG_DICT_GET_FAILED, "Unable to fetch path");
+                goto out;
+        }
+ 
+        ret = dict_get_str (dict, "value", &prj_id);
+        if (ret) {
+                gf_msg (this->name, GF_LOG_ERROR, 0,
+                        GD_MSG_DICT_GET_FAILED, "Unable to fetch project_id");
+                goto out;
+        }
+
+
+        if (type == GF_QUOTA_OPTION_TYPE_ADD_PROJECT ) {
+                ret = glusterd_quota_set_project (volname, path, QUOTA_PROJECT_KEY, prj_id, op_errstr);
+                if (ret)
+                        goto out;
+        } else if (type == GF_QUOTA_OPTION_TYPE_REMOVE_PROJECT) {
+                ret = glusterd_quota_remove_project (volname, path, QUOTA_PROJECT_KEY, prj_id, op_errstr);
+                if (ret)
+                        goto out;
+        }
+
+out:
+        return ret;
+
+} 
 static int
 glusterd_remove_quota_limit (char *volname, char *path, char **op_errstr,
                              int type)
@@ -1645,6 +1757,13 @@ glusterd_op_quota (dict_t *dict, char **op_errstr, dict_t *rsp_dict)
                         ret = glusterd_set_quota_option (volinfo, dict,
                                                   "features.default-soft-limit",
                                                   op_errstr);
+                        if (ret)
+                                goto out;
+                        break;
+
+                case GF_QUOTA_OPTION_TYPE_ADD_PROJECT:
+                case GF_QUOTA_OPTION_TYPE_REMOVE_PROJECT:
+                        ret = glusterd_quota_project (volname, dict, type, op_errstr);
                         if (ret)
                                 goto out;
                         break;
@@ -2048,6 +2167,8 @@ glusterd_op_stage_quota (dict_t *dict, char **op_errstr, dict_t *rsp_dict)
         case GF_QUOTA_OPTION_TYPE_LIMIT_OBJECTS:
         case GF_QUOTA_OPTION_TYPE_REMOVE:
         case GF_QUOTA_OPTION_TYPE_REMOVE_OBJECTS:
+        case GF_QUOTA_OPTION_TYPE_ADD_PROJECT:
+        case GF_QUOTA_OPTION_TYPE_REMOVE_PROJECT:
                 /* Quota auxiliary mount is needed by CLI
                  * for list command and need by glusterd for
                  * setting/removing limit

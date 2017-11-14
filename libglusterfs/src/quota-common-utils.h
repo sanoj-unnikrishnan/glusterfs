@@ -19,6 +19,7 @@
 #define QUOTA_CONF_HEADER_1_1                       \
         "GlusterFS Quota conf | version: v1.1\n"
 
+#define PROJECT_QUOTA 1 
 typedef enum {
         GF_QUOTA_CONF_TYPE_USAGE = 1,
         GF_QUOTA_CONF_TYPE_OBJECTS

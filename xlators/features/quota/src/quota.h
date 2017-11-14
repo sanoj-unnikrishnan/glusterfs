@@ -149,40 +149,6 @@
 #define QUOTA_REG_OR_LNK_FILE(ia_type)  \
     (IA_ISREG (ia_type) || IA_ISLNK (ia_type))
 
-struct quota_project {
-	uint16_t		ext_prj_id;
-	uint16_t		prj_id;
-	uint64_t		prj_limit;
-	uint64_t		prj_usage;				/* last fetched usage */	
-	struct timeval		prj_update_time;			/* Time the usage was last updated */
-	uint32_t		prj_flags;
-	uint64_t		refcount;
-        gf_lock_t       	lock;
-	struct list_head	next_prj;
- 
-	/*struct list_head	prj_list;*/
-};
-typedef struct quota_project quota_prj_t;
-
-struct quota_prj_list {
-        gf_lock_t		lock;
-	struct list_head	prj_list;
-};
-
-
-/*list of all projects*/
-struct quota_prj_list *quota_projects;
-
-/* Flags for quota_project */
-#define QUOTA_ENFORCEMENT_NEEDED 0x00000001
-#define QUOTA_NEEDS_REFRESH	 0x00000002
-
-/*
-struct quota_prj_list {
-	struct list_head	next;
-};
-*/
-
 struct quota_dentry {
         char            *name;
         uuid_t           par;
@@ -204,7 +170,6 @@ struct quota_inode_ctx {
         struct timeval   prev_log;
         gf_boolean_t     ancestry_built;
         gf_lock_t        lock;
-	quota_prj_t  	 *prj;
 };
 typedef struct quota_inode_ctx quota_inode_ctx_t;
 
@@ -246,7 +211,6 @@ struct quota_local {
         call_frame_t           *par_frame;
 };
 typedef struct quota_local      quota_local_t;
-
 
 struct quota_priv {
         uint32_t                soft_timeout;
